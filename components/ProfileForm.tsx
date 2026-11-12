@@ -356,7 +356,6 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
   const [firstGeneration, setFirstGeneration] = useState("");
   const [militaryAffiliation, setMilitaryAffiliation] = useState("");
   const [disabilityStatus, setDisabilityStatus] = useState("");
-  const [usCitizen, setUsCitizen] = useState("");
 
   // Financial
   const [householdIncome, setHouseholdIncome] = useState("");
@@ -388,6 +387,33 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
 
   // Citizenship (required)
   const [citizenship, setCitizenship] = useState("");
+
+  // Multi-page navigation state
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const PAGES = [
+    { title: "Education" },
+    { title: "Academics" },
+    { title: "Demographic Information" },
+    { title: "Financial Information" },
+    { title: "Location" },
+    { title: "Activities and Interests" },
+    { title: "Additional Background" },
+    { title: "Additional Information" },
+  ];
+  const TOTAL_PAGES = PAGES.length;
+
+  // Required fields per page (used to gate the Next button)
+  const PAGE_REQUIRED_FIELDS: Record<number, string[]> = {
+    0: ["educationLevel", "currentYear", "major"],
+    1: [],
+    2: ["citizenship"],
+    3: [],
+    4: ["state"],
+    5: [],
+    6: [],
+    7: [],
+  };
 
   // Validation states
   const [gpaError, setGpaError] = useState("");
@@ -445,6 +471,7 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
 
   // Age validation
   const handleAgeChange = (value: string) => {
+    if (value.includes("-")) return;
     const validPattern = /^\d*$/;
     if (validPattern.test(value)) {
       setAge(value);
@@ -552,9 +579,24 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
     );
   }, [educationLevel, currentYear, major, state, citizenship, gpa]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // Validate only the fields on the current page; mark them touched so errors show.
+  const validateCurrentPage = (): boolean => {
+    const required = PAGE_REQUIRED_FIELDS[currentPage] || [];
+    required.forEach((field) => markTouched(field));
+    return required.every((field) => isFieldValid(field));
+  };
 
+  const handleNext = () => {
+    if (validateCurrentPage()) {
+      setCurrentPage((prev) => Math.min(prev + 1, TOTAL_PAGES - 1));
+    }
+  };
+
+  const handlePrevious = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 0));
+  };
+
+  function handleSubmit() {
     if (!isFormValid) return;
 
     const profile: StudentProfile = {
@@ -570,7 +612,7 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
       firstGeneration,
       militaryAffiliation,
       disabilityStatus,
-      usCitizen,
+      citizenship,
       householdIncome,
       fafsaCompleted,
       pellGrantEligibility,
@@ -740,10 +782,33 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
     </div>
   );
 
+  const pageRequired = PAGE_REQUIRED_FIELDS[currentPage] || [];
+  const pageValid = pageRequired.every((field) => isFieldValid(field));
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-      {/* Education */}
-      <section className={sectionClass} aria-labelledby="education-heading">
+    <form className="space-y-6" noValidate>
+      {/* Progress indicator */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-slate-600">
+            Section {currentPage + 1} of {TOTAL_PAGES}
+          </span>
+          <span className="text-sm font-medium text-slate-600">
+            {PAGES[currentPage].title}
+          </span>
+        </div>
+        <div className="w-full bg-slate-200 rounded-full h-2">
+          <div
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${((currentPage + 1) / TOTAL_PAGES) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {currentPage === 0 && (
+        <>
+          {/* Education */}
+          <section className={sectionClass} aria-labelledby="education-heading">
         <h2 id="education-heading" className="mb-5 text-xl font-bold text-slate-900">
           Education
         </h2>
@@ -881,9 +946,14 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
         </div>
       </section>
+        </>
 
-      {/* Academics */}
-      <section className={sectionClass} aria-labelledby="academics-heading">
+      )}
+
+      {currentPage === 1 && (
+        <>
+          {/* Academics */}
+          <section className={sectionClass} aria-labelledby="academics-heading">
         <h2 id="academics-heading" className="mb-5 text-xl font-bold text-slate-900">
           Academics
         </h2>
@@ -914,9 +984,14 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
         </div>
       </section>
+        </>
 
-      {/* Demographics */}
-      <section className={sectionClass} aria-labelledby="demographics-heading">
+      )}
+
+      {currentPage === 2 && (
+        <>
+          {/* Demographics */}
+          <section className={sectionClass} aria-labelledby="demographics-heading">
         <h2 id="demographics-heading" className="mb-5 text-xl font-bold text-slate-900">
           Demographic Information
         </h2>
@@ -1029,20 +1104,44 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
 
           <div>
-            {renderRadioGroup({
-              options: YES_NO_OPTIONS,
-              selected: usCitizen,
-              onChange: setUsCitizen,
-              name: "usCitizen",
-              groupLabel: "U.S. Citizen (Optional)",
-              touchedField: "",
-            })}
+            <label htmlFor="citizenship" className={requiredLabelClass}>
+              Citizenship Status
+              <span className="text-red-500" aria-hidden="true">*</span>
+              <span className="text-xs text-slate-400">(Required)</span>
+            </label>
+            <select
+              id="citizenship"
+              className={selectClass}
+              value={citizenship}
+              onChange={(e) => setCitizenship(e.target.value)}
+              onBlur={() => markTouched("citizenship")}
+              required
+              aria-required="true"
+              aria-invalid={showError("citizenship")}
+              aria-describedby={showError("citizenship") ? "citizenship-error" : undefined}
+            >
+              {CITIZENSHIP_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {showError("citizenship") && (
+              <p id="citizenship-error" className={errorClass} role="alert">
+                Please select your citizenship status.
+              </p>
+            )}
           </div>
         </div>
       </section>
+        </>
 
-      {/* Financial Information */}
-      <section className={sectionClass} aria-labelledby="financial-heading">
+      )}
+
+      {currentPage === 3 && (
+        <>
+          {/* Financial Information */}
+          <section className={sectionClass} aria-labelledby="financial-heading">
         <h2 id="financial-heading" className="mb-5 text-xl font-bold text-slate-900">
           Financial Information
         </h2>
@@ -1095,9 +1194,14 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
         </div>
       </section>
+        </>
 
-      {/* Location */}
-      <section className={sectionClass} aria-labelledby="location-heading">
+      )}
+
+      {currentPage === 4 && (
+        <>
+          {/* Location */}
+          <section className={sectionClass} aria-labelledby="location-heading">
         <h2 id="location-heading" className="mb-5 text-xl font-bold text-slate-900">
           Location
         </h2>
@@ -1177,9 +1281,14 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
         </div>
       </section>
+        </>
 
-      {/* Activities and Interests */}
-      <section className={sectionClass} aria-labelledby="activities-heading">
+      )}
+
+      {currentPage === 5 && (
+        <>
+          {/* Activities and Interests */}
+          <section className={sectionClass} aria-labelledby="activities-heading">
         <h2 id="activities-heading" className="mb-5 text-xl font-bold text-slate-900">
           Activities and Interests
         </h2>
@@ -1253,9 +1362,14 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
         </div>
       </section>
+        </>
 
-      {/* Additional Background */}
-      <section className={sectionClass} aria-labelledby="background-heading">
+      )}
+
+      {currentPage === 6 && (
+        <>
+          {/* Additional Background */}
+          <section className={sectionClass} aria-labelledby="background-heading">
         <h2 id="background-heading" className="mb-5 text-xl font-bold text-slate-900">
           Additional Background
         </h2>
@@ -1356,48 +1470,14 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </div>
         </div>
       </section>
+        </>
 
-      {/* Citizenship */}
-      <section className={sectionClass} aria-labelledby="citizenship-heading">
-        <h2 id="citizenship-heading" className="mb-5 text-xl font-bold text-slate-900">
-          Citizenship
-        </h2>
+      )}
 
-        <div className="space-y-5">
-          <div>
-            <label htmlFor="citizenship" className={requiredLabelClass}>
-              Citizenship Status
-              <span className="text-red-500" aria-hidden="true">*</span>
-              <span className="text-xs text-slate-400">(Required)</span>
-            </label>
-            <select
-              id="citizenship"
-              className={selectClass}
-              value={citizenship}
-              onChange={(e) => setCitizenship(e.target.value)}
-              onBlur={() => markTouched("citizenship")}
-              required
-              aria-required="true"
-              aria-invalid={showError("citizenship")}
-              aria-describedby={showError("citizenship") ? "citizenship-error" : undefined}
-            >
-              {CITIZENSHIP_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {showError("citizenship") && (
-              <p id="citizenship-error" className={errorClass} role="alert">
-                Please select your citizenship status.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Additional Information */}
-      <section className={sectionClass} aria-labelledby="additional-heading">
+      {currentPage === 7 && (
+        <>
+          {/* Additional Information */}
+          <section className={sectionClass} aria-labelledby="additional-heading">
         <h2 id="additional-heading" className="mb-5 text-xl font-bold text-slate-900">
           Additional Information
         </h2>
@@ -1421,25 +1501,51 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
           </p>
         </div>
       </section>
+        </>
 
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={!isFormValid}
-        className={`
-          w-full rounded-lg px-6 py-3.5 font-semibold text-white shadow-sm transition-all
-          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-          ${isFormValid
-            ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 cursor-pointer"
-            : "bg-slate-300 text-slate-500 cursor-not-allowed"
-          }
-        `}
-        aria-disabled={!isFormValid}
-      >
-        {isFormValid ? "Submit Profile" : "Complete required fields to submit"}
-      </button>
+      )}
 
-      {!isFormValid && (
+      {/* Navigation */}
+      <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-between sm:items-end">
+        {currentPage > 0 && (
+          <button
+            type="button"
+            onClick={handlePrevious}
+            className="w-full sm:w-auto rounded-lg px-6 py-3.5 font-semibold text-slate-700 bg-slate-100 border border-slate-200 shadow-sm transition-all hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+        )}
+        {currentPage === TOTAL_PAGES - 1 ? (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!isFormValid}
+            className={`
+              w-full rounded-lg px-6 py-3.5 font-semibold text-white shadow-sm transition-all
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              ${isFormValid
+                ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 cursor-pointer"
+                : "bg-slate-300 text-slate-500 cursor-not-allowed"
+              }
+            `}
+            aria-disabled={!isFormValid}
+          >
+            {isFormValid ? "Submit Profile" : "Complete required fields to submit"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!pageValid}
+            className="w-full rounded-lg px-6 py-3.5 font-semibold text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 cursor-pointer disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        )}
+      </div>
+
+      {currentPage === TOTAL_PAGES - 1 && !isFormValid && (
         <p className="text-center text-sm text-slate-500" role="status" aria-live="polite">
           Please fill in all required fields (marked with <span className="text-red-500" aria-hidden="true">*</span>) to enable submission.
         </p>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -7,6 +6,7 @@ import { StudentProfile } from "../types/profile";
 
 export default function Home() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
@@ -23,9 +23,11 @@ export default function Home() {
           </p>
         </header>
 
-        <ProfileForm onSubmit={setProfile} />
+        {!submitted && (
+          <ProfileForm onSubmit={(profile) => { setProfile(profile); setSubmitted(true); }} />
+        )}
 
-        {profile && (
+        {submitted && profile && (
           <section className="mt-8 rounded-xl border border-green-200 bg-white p-6 shadow-sm">
             <h2 className="mb-3 text-xl font-bold text-green-700">
               Profile Submitted!

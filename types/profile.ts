@@ -14,7 +14,7 @@ export interface StudentProfile {
   firstGeneration: string;
   militaryAffiliation: string;
   disabilityStatus: string;
-  usCitizen: string;
+  citizenship: string;
 
   // Financial
   householdIncome: string;
