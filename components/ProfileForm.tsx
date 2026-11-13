@@ -599,11 +599,12 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
   function handleSubmit() {
     if (!isFormValid) return;
 
-    const profile: StudentProfile = {
+    const profile = {
       educationLevel,
+      academicLevel: educationLevel, // Map to backend expected field
       currentYear,
       major: major.trim(),
-      gpa: gpa === "" ? null : Number(parseFloat(gpa).toFixed(2)),
+      gpa: gpa === "" ? 0 : Number(parseFloat(gpa).toFixed(2)), // Backend requires gpa
       institutionName: institutionName.trim(),
       expectedGraduationYear,
       age: age === "" ? null : parseInt(age, 10),
@@ -632,7 +633,7 @@ export default function ProfileForm({ onSubmit }: ProfileFormProps) {
       additionalInformation: additionalInformation.trim(),
     };
 
-    onSubmit(profile);
+    onSubmit(profile as StudentProfile);
   }
 
   const markTouched = (fieldName: string) => {

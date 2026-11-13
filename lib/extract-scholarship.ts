@@ -18,7 +18,8 @@ Extraction rules:
 - Deadlines: convert to ISO 8601 format (YYYY-MM-DD) when possible.
 - Missing information: list important fields that could not be determined in missingInformation.
 - Source evidence: include relevant quotes or context for key eligibility fields where practical.
-- extractionStatus: "complete" if all major fields found, "partial" if some key fields missing, "uncertain" if content is ambiguous.`;
+- extractionStatus: "complete" if all major fields found, "partial" if some key fields missing, "uncertain" if content is ambiguous.
+- OUTDATED SCHOLARSHIPS: If the deadline is before 2026-11-01, return isScholarship: false with reason "Scholarship deadline has passed (before November 2026)". Do not extract outdated scholarships.`;
 
 export interface ExtractionInput {
   url: string;
